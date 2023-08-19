@@ -36,8 +36,8 @@ start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 LOG_DIR = args.log_dir + '/' + args.runname
 if not os.path.isdir(LOG_DIR):
     os.mkdir(LOG_DIR)
-logfile = os.path.join(LOG_DIR, 'log_' + args.dataset +"_" + args.model + '.txt')
-confgfile = os.path.join(LOG_DIR, 'conf_' + args.dataset +"_" + args.model + '.txt')
+logfile = os.path.join(LOG_DIR, 'log+' + args.dataset +"+" + args.model + '.txt')
+confgfile = os.path.join(LOG_DIR, 'conf+' + args.dataset +"+" + args.model + '.txt')
 
 save_model = args.save_dir + args.dataset + "+" + args.model + '.t7'
 
@@ -64,7 +64,6 @@ model = model.to(device)
 # define loss function (criterion) and optimizer
 criterion = torch.nn.CrossEntropyLoss()
 
-# optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=5e-4)
 optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 
 print('==> Model acc:')
