@@ -7,7 +7,7 @@ import torchvision
 import torchvision.transforms as transforms
 
 
-def data_loader(dataset, batch_size, train_set_path, test_set_path, num_workers=2, shuffle=True):
+def data_loader(dataset, batch_size, train_set_path, test_set_path, num_workers=4, shuffle=True):
 
     transforms_train = transforms.Compose([
         transforms.RandomCrop(32, padding=4),

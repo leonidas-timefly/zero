@@ -65,6 +65,7 @@ model = model.to(device)
 criterion = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 
+print('==> Model acc:')
 acc = test(model, criterion, logfile, test_loader, device)
 
 
