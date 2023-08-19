@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser(description='Train a victim model')
 parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
 parser.add_argument('--dataset', default='cifar10', help='the dataset to train on')
 parser.add_argument('--batch_size', default=128, type=int, help='the batch size')
-parser.add_argument('--max_epochs', default=100, type=int, help='the maximum number of epochs')
+parser.add_argument('--max_epochs', default=50, type=int, help='the maximum number of epochs')
 parser.add_argument('--ratio', default=0.1, type=float, help='ratio to decay lr')
 
 parser.add_argument('--save_dir', default='./model/', help='the path to the model dir')
