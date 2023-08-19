@@ -1,1 +1,0 @@
-python train.py --dataset=cifar10 --model=resnet18
