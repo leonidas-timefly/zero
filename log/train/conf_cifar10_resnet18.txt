@@ -1,6 +1,6 @@
-lr: 0.01
+lr: 0.1
 dataset: cifar10
-batch_size: 256
+batch_size: 128
 max_epochs: 100
 ratio: 0.1
 save_dir: ./model/

@@ -11,10 +11,10 @@ from helper.loader import data_loader
 from helper.trainer import train, test, adjust_learning_rate
 
 parser = argparse.ArgumentParser(description='Train a victim model')
-parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
+parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--dataset', default='cifar10', help='the dataset to train on')
 parser.add_argument('--batch_size', default=128, type=int, help='the batch size')
-parser.add_argument('--max_epochs', default=50, type=int, help='the maximum number of epochs')
+parser.add_argument('--max_epochs', default=100, type=int, help='the maximum number of epochs')
 parser.add_argument('--ratio', default=0.1, type=float, help='ratio to decay lr')
 
 parser.add_argument('--save_dir', default='./model/', help='the path to the model dir')
@@ -63,6 +63,8 @@ model = model.to(device)
 
 # define loss function (criterion) and optimizer
 criterion = torch.nn.CrossEntropyLoss()
+
+# optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=5e-4)
 optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 
 print('==> Model acc:')
