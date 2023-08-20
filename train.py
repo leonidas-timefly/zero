@@ -46,6 +46,14 @@ with open(confgfile, 'w') as f:
     for arg in vars(args):
         f.write('{}: {}\n'.format(arg, getattr(args, arg)))
 
+# victim model
+print('==> Loading victim model..')
+args.load_path = 'model/cifar10+resnet18.t7'
+assert os.path.isfile(args.load_path), 'Error: no checkpoint directory found!'
+checkpoint = torch.load(args.load_path)
+victim_model = checkpoint['net']
+victim_acc = checkpoint['acc']
+print('==> Victim model loaded..')
 
 # Data
 print('==> Preparing data..')
@@ -53,7 +61,7 @@ train_loader, test_loader, class_number = data_loader(args.dataset, args.batch_s
 print('==> Data prepared..')
 
 # Model
-print('==> Building model..')
+print('==> Building substitute model..')
 if args.model == 'resnet18':
     model = models.resnet18(num_classes=class_number)
 print('==> Model built..')
