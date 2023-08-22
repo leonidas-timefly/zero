@@ -100,27 +100,55 @@ with torch.no_grad():
 print('==> Embedding obtained..')
 
 
-features = total_feature.numpy()
-total_target = total_target.numpy()
+features = total_feature
+total_target = total_target
 
-# Cluster the proxy data
-print('==> Clustering the proxy data..')
-cluster_number = 10
-cluster_label = Clustering_Hierarchy(features, cluster_number)
 
-print('==> Proxy data clustered..')
+print('==> Obtain random require..')
 
-images_lists = [[] for i in range(cluster_number)]
-for i in range(len(cluster_label)):
-    images_lists[cluster_label[i]].append(i)
+# Prepare proxy data
+print('==> Preparing proxy data..')
+proxy_train_loader, _, _ = data_loader(args.proxy_dataset, args.batch_size, './data', './data', num_workers=2, shuffle=False, resize=32, flag=True)
+print('==> Proxy data prepared..')
 
-for i in range(cluster_number):
-    print('length of cluster {}: {}'.format(i, len(images_lists[i])))
+query_number = 1000
+data_tensor = torch.tensor([])
+with torch.no_grad():
+    for batch_idx, (inputs, targets) in enumerate(proxy_train_loader):
+        data_tensor = torch.cat((data_tensor, inputs.cpu()), 0)
+        progress_bar(batch_idx, len(proxy_train_loader))
 
-# Obtain the original label of each cluster
-print('==> Obtaining the original label of each cluster..')
-for i in range(cluster_number):
-    print(total_target[images_lists[i]])
+query_index = np.random.choice(data_tensor.shape[0], query_number, replace=False)
+query_data = data_tensor[query_index]
 
-for i in range(cluster_number):
-    print(Counter(total_target[images_lists[i]]))
+victim_model.eval()
+with torch.no_grad():
+    query_results = victim_model(query_data.to(device))
+
+total_index = np.arange(data_tensor.shape[0])
+unquery_index = np.delete(total_index, query_index)
+
+# obtain the distance matrix between the query data and the unquery data
+
+
+# # Cluster the proxy data
+# print('==> Clustering the proxy data..')
+# cluster_number = 10
+# cluster_label = Clustering_Hierarchy(features, cluster_number)
+
+# print('==> Proxy data clustered..')
+
+# images_lists = [[] for i in range(cluster_number)]
+# for i in range(len(cluster_label)):
+#     images_lists[cluster_label[i]].append(i)
+
+# for i in range(cluster_number):
+#     print('length of cluster {}: {}'.format(i, len(images_lists[i])))
+
+# # Obtain the original label of each cluster
+# print('==> Obtaining the original label of each cluster..')
+# for i in range(cluster_number):
+#     print(total_target[images_lists[i]])
+
+# for i in range(cluster_number):
+#     print(Counter(total_target[images_lists[i]]))

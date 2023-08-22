@@ -33,4 +33,3 @@ def Naive_Clustering(data, cluster_number):
     return [int(n[0]) for n in I]
 
 
-def Hierarchical_Clustering(data):
