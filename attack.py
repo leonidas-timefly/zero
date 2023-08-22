@@ -13,7 +13,7 @@ import time, copy, sys
 from helper.loader import data_loader
 from helper.trainer import train, test, adjust_learning_rate
 from helper.utils import progress_bar
-from helper.method import Clustering_Hierarchy
+# from helper.method import Clustering_Hierarchy
 
 parser = argparse.ArgumentParser(description='Train a victim model')
 parser.add_argument('--victim_dataset', default='cifar10', help='victim dataset')
@@ -87,21 +87,15 @@ print('==> Feature extractor created..')
 # Obtain the embedding of the proxy data
 print('==> Obtaining the embedding of the proxy data..')
 total_feature = torch.tensor([])
-total_target = torch.tensor([])
 with torch.no_grad():
     for batch_idx, (inputs, targets) in enumerate(proxy_train_loader):
         inputs= inputs.to(device)
-        total_target = torch.cat((total_target, targets.cpu()), 0)
         features = encoder(inputs)
         total_feature = torch.cat((total_feature, features.cpu()), 0)
         progress_bar(batch_idx, len(proxy_train_loader), 'new sample shape: (%d, %d) | total sample shape: (%d, %d)'
                 % (features.shape[0], features.shape[1], total_feature.shape[0], total_feature.shape[1]))
 
 print('==> Embedding obtained..')
-
-
-features = total_feature
-total_target = total_target
 
 
 print('==> Obtain random require..')
@@ -111,44 +105,84 @@ print('==> Preparing proxy data..')
 proxy_train_loader, _, _ = data_loader(args.proxy_dataset, args.batch_size, './data', './data', num_workers=2, shuffle=False, resize=32, flag=True)
 print('==> Proxy data prepared..')
 
-query_number = 1000
-data_tensor = torch.tensor([])
-with torch.no_grad():
-    for batch_idx, (inputs, targets) in enumerate(proxy_train_loader):
-        data_tensor = torch.cat((data_tensor, inputs.cpu()), 0)
-        progress_bar(batch_idx, len(proxy_train_loader))
+query_number = 2000
 
-query_index = np.random.choice(data_tensor.shape[0], query_number, replace=False)
-query_data = data_tensor[query_index]
+query_index = np.random.choice(total_feature.shape[0], query_number, replace=False)
 
-victim_model.eval()
-with torch.no_grad():
-    query_results = victim_model(query_data.to(device))
-
-total_index = np.arange(data_tensor.shape[0])
+total_index = np.arange(total_feature.shape[0])
 unquery_index = np.delete(total_index, query_index)
 
 # obtain the distance matrix between the query data and the unquery data
+unquery_feature = total_feature[unquery_index]
+query_fature = total_feature[query_index]
+distance_matrix = torch.cdist(unquery_feature, query_fature, p=2)
+
+print("The shape of distance matrix: ", distance_matrix.shape)
+# obtain the index of the unquery data that are closest to the query data
+_, match_index = torch.topk(distance_matrix, 1, dim=1, largest=False, sorted=True)
+print("The shape of unquery index: ", match_index.shape)
 
 
-# # Cluster the proxy data
-# print('==> Clustering the proxy data..')
-# cluster_number = 10
-# cluster_label = Clustering_Hierarchy(features, cluster_number)
+# get the data for query
+print('==> Obtaining the query data..')
+query_data = torch.tensor([])
+query_target = torch.tensor([])
+for batch_idx, (inputs, targets) in enumerate(proxy_train_loader):
+    query_data = torch.cat((query_data, inputs), 0)
+    query_target = torch.cat((query_target, targets), 0)
+    progress_bar(batch_idx, len(proxy_train_loader))
 
-# print('==> Proxy data clustered..')
+query_data = query_data[query_index]
 
-# images_lists = [[] for i in range(cluster_number)]
-# for i in range(len(cluster_label)):
-#     images_lists[cluster_label[i]].append(i)
+with torch.no_grad():
+    query_data = query_data.to(device)
+    query_result = victim_model(query_data)
+    query_result = query_result.cpu()
+    query_result = torch.argmax(query_result, dim=1)
 
-# for i in range(cluster_number):
-#     print('length of cluster {}: {}'.format(i, len(images_lists[i])))
+temp_target = torch.zeros(query_target.shape[0], dtype=torch.int64)
+temp_target[unquery_index] = query_result[match_index.squeeze()]
+temp_target[query_index] = query_result
 
-# # Obtain the original label of each cluster
-# print('==> Obtaining the original label of each cluster..')
-# for i in range(cluster_number):
-#     print(total_target[images_lists[i]])
+print(temp_target)
 
-# for i in range(cluster_number):
-#     print(Counter(total_target[images_lists[i]]))
+# calculate the accuracy of all the data
+print('==> Calculating the accuracy of all the data..')
+    
+correct = torch.eq(temp_target, query_target).sum().float().item()
+correct_rate = correct / query_target.shape[0]
+print('Accuracy: ', correct_rate)
+
+
+## create training dataset and loader
+
+print('==> Creating training dataset and loader..')
+
+# change the shape of query_result
+query_result = query_result.squeeze()
+train_dataset = torch.utils.data.TensorDataset(query_data, query_result)
+
+train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
+print('==> Training dataset and loader created..')
+
+
+# Create a substitute model
+print('==> Creating substitute model..')
+substitute_model = models.resnet18(num_classes=class_number)
+substitute_model = substitute_model.to(device)
+print('==> Substitute model created..')
+
+# define loss function (criterion) and optimizer
+criterion = torch.nn.CrossEntropyLoss()
+
+optimizer = torch.optim.SGD(substitute_model.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
+
+for epoch in range(start_epoch, args.max_epochs):
+
+    # adjust_learning_rate
+    adjust_learning_rate(args.lr, optimizer, epoch, args.ratio)
+
+    train(epoch, substitute_model, criterion, optimizer, logfile, train_loader, device)
+
+    print("Test acc:")
+    test_acc = test(substitute_model, criterion, logfile, proxy_train_loader, device)
