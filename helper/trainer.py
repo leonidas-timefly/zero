@@ -39,6 +39,7 @@ def train(epoch, net, criterion, optimizer, logfile, loader, device):
         f.write('Epoch: %d\n' % epoch)
         f.write('Loss: %.3f | Acc: %.3f%% (%d/%d)\n'
                 % (train_loss / (batch_idx + 1), 100. * float(correct) / total, correct, total))
+    return correct / total
 
 
 # Test function
@@ -69,7 +70,7 @@ def test(net, criterion, logfile, loader, device):
         f.write('Loss: %.3f | Acc: %.3f%% (%d/%d)\n'
                 % (test_loss / (batch_idx + 1), 100. * float(correct) / total, correct, total))
     # return the acc.
-    return 100. * correct / total
+    return correct / total
 
 
 # Adjust learning rate

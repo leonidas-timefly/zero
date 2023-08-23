@@ -177,12 +177,20 @@ criterion = torch.nn.CrossEntropyLoss()
 
 optimizer = torch.optim.SGD(substitute_model.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 
+train_acc_set = []
+test_acc_set = []
+
 for epoch in range(start_epoch, args.max_epochs):
 
     # adjust_learning_rate
     adjust_learning_rate(args.lr, optimizer, epoch, args.ratio)
 
-    train(epoch, substitute_model, criterion, optimizer, logfile, train_loader, device)
+    train_acc = train(epoch, substitute_model, criterion, optimizer, logfile, train_loader, device)
+    train_acc_set.append(train_acc.numpy().item())
 
     print("Test acc:")
     test_acc = test(substitute_model, criterion, logfile, proxy_train_loader, device)
+    test_acc_set.append(test_acc.numpy().item())
+
+print(train_acc_set)
+print(test_acc_set)
