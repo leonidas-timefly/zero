@@ -44,8 +44,6 @@ def train_val_split(labels, n_labeled_per_class):
     np.random.shuffle(train_labeled_idxs)
     np.random.shuffle(train_unlabeled_idxs)
     np.random.shuffle(val_idxs)
-    print(len(train_labeled_idxs), len(train_unlabeled_idxs), len(val_idxs))
-    sys.exit()
 
     return train_labeled_idxs, train_unlabeled_idxs, val_idxs
 

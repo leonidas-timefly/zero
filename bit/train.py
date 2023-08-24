@@ -229,10 +229,20 @@ def train(labeled_trainloader, unlabeled_trainloader, model, optimizer, ema_opti
             # compute guessed labels of unlabel samples
             outputs_u = model(inputs_u)
             outputs_u2 = model(inputs_u2)
+            # only maintain the samples whose augmented data have a probability larger than threshold
+            flag_u = torch.max(torch.softmax(outputs_u, dim=1), dim=1)[0] >= 0.90
+            flag_u2 = torch.max(torch.softmax(outputs_u2, dim=1), dim=1)[0] >= 0.90
+            
+            mask = flag_u & flag_u2
+            inputs_u = inputs_u[mask]
+            inputs_u2 = inputs_u2[mask]
+            outputs_u = outputs_u[mask]
+            outputs_u2 = outputs_u2[mask]
             p = (torch.softmax(outputs_u, dim=1) + torch.softmax(outputs_u2, dim=1)) / 2
             pt = p**(1/args.T)
             targets_u = pt / pt.sum(dim=1, keepdim=True)
             targets_u = targets_u.detach()
+
 
         # mixup
         all_inputs = torch.cat([inputs_x, inputs_u, inputs_u2], dim=0)
@@ -247,11 +257,13 @@ def train(labeled_trainloader, unlabeled_trainloader, model, optimizer, ema_opti
         input_a, input_b = all_inputs, all_inputs[idx]
         target_a, target_b = all_targets, all_targets[idx]
 
+
         mixed_input = l * input_a + (1 - l) * input_b
         mixed_target = l * target_a + (1 - l) * target_b
 
         # interleave labeled and unlabed samples between batches to get correct batchnorm calculation 
         mixed_input = list(torch.split(mixed_input, batch_size))
+
         mixed_input = interleave(mixed_input, batch_size)
 
         logits = [model(mixed_input[0])]
@@ -259,12 +271,15 @@ def train(labeled_trainloader, unlabeled_trainloader, model, optimizer, ema_opti
             logits.append(model(input))
 
         # put interleaved samples back
+
         logits = interleave(logits, batch_size)
         logits_x = logits[0]
-        logits_u = torch.cat(logits[1:], dim=0)
 
+        logits_u = torch.cat(logits[1:], dim=0)
+        print(logits_x.shape, mixed_target[:batch_size].shape, logits_u.shape, mixed_target[batch_size:].shape)
         Lx, Lu, w = criterion(logits_x, mixed_target[:batch_size], logits_u, mixed_target[batch_size:], epoch+batch_idx/args.train_iteration)
 
+        Lx, Lu, w = -torch.mean(torch.sum(F.log_softmax(logits_x, dim=1) * mixed_target[:batch_size], dim=1)), np.float32(0), np.float32(0)
         loss = Lx + w * Lu
 
         # record loss
