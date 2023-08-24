@@ -264,6 +264,7 @@ def train(labeled_trainloader, unlabeled_trainloader, model, optimizer, ema_opti
         # interleave labeled and unlabed samples between batches to get correct batchnorm calculation 
         mixed_input = list(torch.split(mixed_input, batch_size))
 
+
         mixed_input = interleave(mixed_input, batch_size)
 
         logits = [model(mixed_input[0])]
@@ -409,8 +410,8 @@ class WeightEMA(object):
                 # customized weight decay
                 param.mul_(1 - self.wd)
 
-def interleave_offsets(batch, nu):
-    groups = [batch // (nu + 1)] * (nu + 1)
+def interleave_offsets(batch, logits_length):
+    groups = [batch // (logits_length + 1)] * (logits_length + 1)
     for x in range(batch - sum(groups)):
         groups[-x - 1] += 1
     offsets = [0]
@@ -420,13 +421,13 @@ def interleave_offsets(batch, nu):
     return offsets
 
 
-def interleave(xy, batch):
-    nu = len(xy) - 1
-    offsets = interleave_offsets(batch, nu)
-    xy = [[v[offsets[p]:offsets[p + 1]] for p in range(nu + 1)] for v in xy]
-    for i in range(1, nu + 1):
-        xy[0][i], xy[i][i] = xy[i][i], xy[0][i]
-    return [torch.cat(v, dim=0) for v in xy]
+def interleave(all_logits, batch):
+    logits_length = len(all_logits) - 1
+    offsets = interleave_offsets(batch, logits_length)
+    all_logits = [[v[offsets[p]:offsets[p + 1]] for p in range(logits_length + 1)] for v in all_logits]
+    for i in range(1, logits_length + 1):
+        all_logits[0][i], all_logits[i][i] = all_logits[i][i], all_logits[0][i]
+    return [torch.cat(v, dim=0) for v in all_logits]
 
 if __name__ == '__main__':
     main()
